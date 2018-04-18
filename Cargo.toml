@@ -1,0 +1,8 @@
+[package]
+name = "kaleidscope"
+version = "0.1.0"
+authors = ["Toshiki Teramura <toshiki.teramura@gmail.com>"]
+
+[dependencies]
+combine = "2.*"
+# llvm-sys = "60"
