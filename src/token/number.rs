@@ -29,3 +29,16 @@ where
 {
     Number(PhantomData)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse() {
+        let mut num = number();
+        let (num, remain) = num.parse("1.234").unwrap();
+        assert_eq!(num, Token::Number(1.234));
+        assert_eq!(remain, "");
+    }
+}
