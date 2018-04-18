@@ -72,6 +72,8 @@ mod tests {
         assert_eq!(token, Token::Identifier("a".into()));
         let (token, remain) = p.parse(remain).unwrap();
         assert_eq!(token, Token::Number(1.234));
+        let (token, remain) = p.parse(remain).unwrap();
+        assert_eq!(token, Token::EOF);
         assert_eq!(remain, "");
     }
 }
