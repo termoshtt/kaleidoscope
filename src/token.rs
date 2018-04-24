@@ -10,7 +10,7 @@ pub enum Token {
     Number(f64),
 }
 
-pub fn number<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+fn number<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
     many1::<String, _>(digit().or(token('.'))).map(|c| {
         c.parse::<f64>()
             .map(|f| Token::Number(f))
@@ -18,7 +18,7 @@ pub fn number<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token
     })
 }
 
-pub fn identifier<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+fn identifier<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
     letter().then(|d| {
         many::<String, _>(alpha_num()).map(move |s| {
             let s = format!("{}{}", d, s);
@@ -31,8 +31,19 @@ pub fn identifier<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = T
     })
 }
 
-pub fn parser<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
-    spaces().then(|_| eof().map(|_| Token::EOF).or(number().or(identifier())))
+pub fn parse(mut cur: &str) -> Vec<Token> {
+    let mut p = spaces().then(|_| eof().map(|_| Token::EOF).or(number().or(identifier())));
+    let mut tokens = Vec::new();
+    loop {
+        let (t, remain) = p.parse(cur).expect("Failed to parse");
+        if t == Token::EOF {
+            break;
+        }
+        tokens.push(t);
+        cur = remain;
+    }
+    tokens.push(Token::EOF);
+    tokens
 }
 
 #[cfg(test)]
@@ -64,16 +75,15 @@ mod tests {
     }
 
     #[test]
-    fn parse() {
-        let mut p = parser();
-        let (token, remain) = p.parse("def a 1.234").unwrap();
-        assert_eq!(token, Token::Def);
-        let (token, remain) = p.parse(remain).unwrap();
-        assert_eq!(token, Token::Identifier("a".into()));
-        let (token, remain) = p.parse(remain).unwrap();
-        assert_eq!(token, Token::Number(1.234));
-        let (token, remain) = p.parse(remain).unwrap();
-        assert_eq!(token, Token::EOF);
-        assert_eq!(remain, "");
+    fn parse_into() {
+        let input = "def a 1.23";
+        let tokens = parse(input);
+        let ans = vec![
+            Token::Def,
+            Token::Identifier("a".into()),
+            Token::Number(1.23),
+            Token::EOF,
+        ];
+        assert_eq!(tokens, ans);
     }
 }
