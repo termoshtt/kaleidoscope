@@ -16,4 +16,5 @@ fn parse_proto() {
 fn parse_call() {
     let mut p = parser::call_expr();
     let (call, _) = p.parse("f(a, 1.0, b)").unwrap();
+    println!("call = {:?}", call);
 }
