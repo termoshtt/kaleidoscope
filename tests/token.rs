@@ -34,5 +34,5 @@ fn parse_ident() {
     // with space
     let (v, remain) = p.parse("a a").unwrap();
     assert_eq!(v, Token::Identifier("a".into()));
-    assert_eq!(remain, "a");
+    assert_eq!(remain, " a");
 }
