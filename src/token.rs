@@ -1,4 +1,4 @@
-use combine::char::{alpha_num, digit, letter, spaces};
+use combine::char::{alpha_num, digit, letter, spaces, string};
 use combine::*;
 
 #[derive(Debug, PartialEq)]
@@ -18,21 +18,29 @@ fn number<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
     })
 }
 
-fn identifier<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+fn def<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+    string("def").map(|_| Token::Def)
+}
+
+fn extern_<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+    string("extern").map(|_| Token::Extern)
+}
+
+fn ident<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
     letter().then(|d| {
         many::<String, _>(alpha_num()).map(move |s| {
             let s = format!("{}{}", d, s);
-            match s.as_str() {
-                "def" => Token::Def,
-                "extern" => Token::Extern,
-                _ => Token::Identifier(s),
-            }
+            Token::Identifier(s)
         })
     })
 }
 
+fn words<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
+    def().or(extern_().or(ident()))
+}
+
 pub fn parse(mut cur: &str) -> Vec<Token> {
-    let mut p = spaces().then(|_| eof().map(|_| Token::EOF).or(number().or(identifier())));
+    let mut p = spaces().then(|_| eof().map(|_| Token::EOF).or(number().or(words())));
     let mut tokens = Vec::new();
     loop {
         let (t, remain) = p.parse(cur).expect("Failed to parse");
@@ -51,8 +59,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_identifier() {
-        let mut p = identifier();
+    fn parse_words() {
+        let mut p = words();
         let (id, remain) = p.parse("a").unwrap();
         assert_eq!(id, Token::Identifier("a".to_string()));
         assert_eq!(remain, "");
@@ -75,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_into() {
+    fn parse_tokens() {
         let input = "def a 1.23";
         let tokens = parse(input);
         let ans = vec![
