@@ -1,4 +1,4 @@
-use combine::char::{alpha_num, digit, letter, spaces, string};
+use combine::char::{alpha_num, digit, letter, string};
 use combine::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,16 +43,12 @@ pub fn extern_<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Toke
 }
 
 pub fn ident<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
-    between(
-        spaces(),
-        spaces(),
-        letter().or(token('_')).then(|d| {
-            many::<String, _>(alpha_num().or(token('_'))).map(move |s| {
-                let s = format!("{}{}", d, s);
-                Token::Identifier(s)
-            })
-        }),
-    )
+    letter().or(token('_')).then(|d| {
+        many::<String, _>(alpha_num().or(token('_'))).map(move |s| {
+            let s = format!("{}{}", d, s);
+            Token::Identifier(s)
+        })
+    })
 }
 
 pub fn eof<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Token> {
