@@ -1,15 +1,16 @@
 #![allow(dead_code)]
+use std::fmt::Debug;
 
-pub trait Expr: ::std::fmt::Debug {}
+pub trait Expr: Debug {}
 
-#[derive(Debug, PartialEq, new)]
+#[derive(Debug, Clone, PartialEq, new)]
 pub struct Variable {
     name: String,
 }
 
 impl Expr for Variable {}
 
-#[derive(Debug, PartialEq, new)]
+#[derive(Debug, Clone, PartialEq, new)]
 pub struct Number {
     value: f64,
 }

@@ -38,11 +38,9 @@ impl<I: Stream<Item = char>> Parser for CallExpr<I> {
     type Output = Box<ast::Expr>;
     #[inline]
     fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
-        let mut p = ident().then(|name| {
-            let name = name.as_ident().unwrap();
-            between(token('('), token(')'), sep_by(expr(), token(',')))
-                .map(move |args| Box::new(ast::Call::new(name.clone(), args)) as _)
-        });
+        let mut p = ident()
+            .and(between(token('('), token(')'), sep_by(expr(), token(','))))
+            .map(move |(name, args)| Box::new(ast::Call::new(name.as_ident().unwrap(), args)) as _);
         p.parse_stream(input)
     }
 }
@@ -59,7 +57,7 @@ impl<I: Stream<Item = char>> Parser for Expr<I> {
         let mut p = between(
             spaces(),
             spaces(),
-            call_expr().or(number_expr().or(variable_expr())),
+            try(call_expr()).or(number_expr().or(variable_expr())),
         );
         p.parse_stream(input)
     }
