@@ -4,34 +4,6 @@ use combine::*;
 use std::marker::PhantomData;
 use token::*;
 
-pub struct NumberParser<I>(PhantomData<fn(I) -> I>);
-impl<I: Stream<Item = char>> Parser for NumberParser<I> {
-    type Input = I;
-    type Output = Box<ast::Expr>;
-    #[inline]
-    fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
-        let mut p = number().map(|t| Box::new(ast::Number::new(t.as_number().unwrap())) as _);
-        p.parse_stream(input)
-    }
-}
-pub fn number_expr<I: Stream<Item = char>>() -> NumberParser<I> {
-    NumberParser(PhantomData)
-}
-
-pub struct VariableParser<I>(PhantomData<fn(I) -> I>);
-impl<I: Stream<Item = char>> Parser for VariableParser<I> {
-    type Input = I;
-    type Output = Box<ast::Expr>;
-    #[inline]
-    fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
-        let mut p = ident().map(|t| Box::new(ast::Variable::new(t.as_ident().unwrap())) as _);
-        p.parse_stream(input)
-    }
-}
-pub fn variable_expr<I: Stream<Item = char>>() -> VariableParser<I> {
-    VariableParser(PhantomData)
-}
-
 pub struct CallExpr<I>(PhantomData<fn(I) -> I>);
 impl<I: Stream<Item = char>> Parser for CallExpr<I> {
     type Input = I;
@@ -54,11 +26,9 @@ impl<I: Stream<Item = char>> Parser for Expr<I> {
     type Output = Box<ast::Expr>;
     #[inline]
     fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
-        let mut p = between(
-            spaces(),
-            spaces(),
-            try(call_expr()).or(number_expr().or(variable_expr())),
-        );
+        let num = number().map(|t| Box::new(ast::Number::new(t.as_number().unwrap())) as _);
+        let var = ident().map(|t| Box::new(ast::Variable::new(t.as_ident().unwrap())) as _);
+        let mut p = between(spaces(), spaces(), try(call_expr()).or(num).or(var));
         p.parse_stream(input)
     }
 }
