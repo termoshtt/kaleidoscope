@@ -53,3 +53,8 @@ pub struct Func {
     proto: Proto,
     body: Box<Expr>,
 }
+
+#[derive(Debug, new)]
+pub struct Extern {
+    proto: Proto,
+}

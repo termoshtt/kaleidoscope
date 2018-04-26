@@ -18,3 +18,19 @@ fn parse_call() {
     let (call, _) = p.parse("f(a, 1.0, b)").unwrap();
     println!("call = {:?}", call);
 }
+
+#[test]
+fn parse_func() {
+    let mut p = parser::func();
+    let src = "def f(a, b) a";
+    let (f, _) = p.parse(src).unwrap();
+    println!("func = {:?}", f);
+}
+
+#[test]
+fn parse_extern() {
+    let mut p = parser::extern_();
+    let src = "extern f(a, b) a";
+    let (f, _) = p.parse(src).unwrap();
+    println!("func = {:?}", f);
+}
