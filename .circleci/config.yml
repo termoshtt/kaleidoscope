@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: rust:1.24.1
+      - image: termoshtt/rust-cuda
     steps:
       - checkout
       - run:
