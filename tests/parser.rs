@@ -51,7 +51,7 @@ fn parse_func() {
 #[test]
 fn parse_extern() {
     let mut p = parser::extern_();
-    let src = "extern f(a, b) a";
+    let src = "extern f(a, b)";
     let (f, remain) = p.parse(src).unwrap();
     println!("func = {:?}", f);
     assert_eq!(remain, "");
