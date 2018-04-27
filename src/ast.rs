@@ -28,16 +28,16 @@ impl Expr for Call {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Op {
     Add,
+    Sub,
     Mul,
-    Neg,
     Div,
 }
 
 #[derive(Debug, new)]
 pub struct Binary {
     op: Op,
-    rhs: Box<Expr>,
     lhs: Box<Expr>,
+    rhs: Box<Expr>,
 }
 
 impl Expr for Binary {}
