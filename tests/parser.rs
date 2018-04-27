@@ -7,10 +7,10 @@ use kaleidscope::{ast, parser};
 #[test]
 fn parse_binary() {
     let mut p = parser::binary_expr();
-    let src = "a + b * c";
+    let src = "a + b + ( c + d ) * e * f + g";
     let (bin, remain) = p.parse(src).unwrap();
     println!("bin = {:?}", bin);
-    println!("remain = {:?}", remain);
+    assert_eq!(remain, "");
 }
 
 #[test]
