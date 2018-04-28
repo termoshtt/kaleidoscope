@@ -2,10 +2,20 @@
 
 use llvm_sys::core::{LLVMConstReal, LLVMDoubleType};
 use llvm_sys::prelude::*;
+use std::collections::HashMap;
 use std::fmt::Debug;
 
-pub trait Ast {
-    fn codegen(&self) -> LLVMValueRef;
+pub type SymbolTable = HashMap<String, LLVMValueRef>;
+
+pub struct CodeGenError<'a> {
+    comment: String,
+    trace: Vec<&'a Ast>,
+}
+
+pub type RValue<'a> = Result<LLVMValueRef, CodeGenError<'a>>;
+
+pub trait Ast: Debug {
+    fn codegen<'a>(&'a self, &mut SymbolTable) -> RValue<'a>;
 }
 
 pub trait Expr: Debug {}
@@ -17,6 +27,18 @@ pub struct Variable {
 
 impl Expr for Variable {}
 
+impl Ast for Variable {
+    fn codegen(&self, table: &mut SymbolTable) -> RValue {
+        match table.get(&self.name) {
+            Some(value) => Ok(*value),
+            None => Err(CodeGenError {
+                comment: format!("Undefined variable: {}", self.name),
+                trace: vec![self],
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, new)]
 pub struct Number {
     value: f64,
@@ -25,8 +47,8 @@ pub struct Number {
 impl Expr for Number {}
 
 impl Ast for Number {
-    fn codegen(&self) -> LLVMValueRef {
-        unsafe { LLVMConstReal(LLVMDoubleType(), self.value) }
+    fn codegen(&self, _: &mut SymbolTable) -> RValue {
+        Ok(unsafe { LLVMConstReal(LLVMDoubleType(), self.value) })
     }
 }
 
