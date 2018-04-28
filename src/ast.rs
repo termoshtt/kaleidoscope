@@ -1,5 +1,12 @@
 #![allow(dead_code)]
+
+use llvm_sys::core::{LLVMConstReal, LLVMDoubleType};
+use llvm_sys::prelude::*;
 use std::fmt::Debug;
+
+pub trait Ast {
+    fn codegen(&self) -> LLVMValueRef;
+}
 
 pub trait Expr: Debug {}
 
@@ -16,6 +23,12 @@ pub struct Number {
 }
 
 impl Expr for Number {}
+
+impl Ast for Number {
+    fn codegen(&self) -> LLVMValueRef {
+        unsafe { LLVMConstReal(LLVMDoubleType(), self.value) }
+    }
+}
 
 #[derive(Debug, new)]
 pub struct Call {

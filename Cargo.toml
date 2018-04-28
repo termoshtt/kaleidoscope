@@ -6,4 +6,4 @@ authors = ["Toshiki Teramura <toshiki.teramura@gmail.com>"]
 [dependencies]
 derive-new = "*"
 combine = "2.*"
-# llvm-sys = "60"
+llvm-sys = "60.*"
