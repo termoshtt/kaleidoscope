@@ -38,6 +38,21 @@ pub struct CodeGenError<'a> {
     trace: Vec<&'a Ast>,
 }
 
+impl<'a> CodeGenError<'a> {
+    fn pushed<'b, 'c>(self, ast: &'b Ast) -> CodeGenError<'c>
+    where
+        'a: 'c,
+        'b: 'c,
+    {
+        let mut trace: Vec<&'c Ast> = self.trace;
+        trace.push(ast);
+        CodeGenError {
+            comment: self.comment,
+            trace,
+        }
+    }
+}
+
 pub type RValue<'a> = Result<LLVMValueRef, CodeGenError<'a>>;
 
 pub trait Ast: Debug {
@@ -56,7 +71,7 @@ impl Expr for Variable {}
 impl Ast for Variable {
     fn codegen(&self, context: &mut Context) -> RValue {
         match context.symble_table.get(&self.name) {
-            Some(value) => Ok(*value),
+            Some(&value) => Ok(value),
             None => Err(CodeGenError {
                 comment: format!("Undefined variable: {}", self.name),
                 trace: vec![self],
@@ -88,7 +103,7 @@ impl Expr for Call {}
 
 impl Ast for Call {
     fn codegen(&self, _: &mut Context) -> RValue {
-        Ok(::std::ptr::null_mut())
+        unimplemented!()
     }
 }
 
@@ -111,8 +126,8 @@ impl Expr for Binary {}
 
 impl Ast for Binary {
     fn codegen(&self, c: &mut Context) -> RValue {
-        let lhs = self.lhs.codegen(c)?;
-        let rhs = self.rhs.codegen(c)?;
+        let lhs = self.lhs.codegen(c).map_err(|e| e.pushed(self))?;
+        let rhs = self.rhs.codegen(c).map_err(|e| e.pushed(self))?;
         match self.op {
             Op::Add => Ok(c.create_fadd(lhs, rhs, "addtmp")),
             Op::Sub => Ok(c.create_fsub(lhs, rhs, "subtmp")),
