@@ -23,7 +23,7 @@ impl<'a> CodeGenError<'a> {
     }
 }
 
-pub type RValue<'a> = Result<Value, CodeGenError<'a>>;
+pub type RValue<'a> = Result<ValueRef, CodeGenError<'a>>;
 
 pub trait Ast: Debug {
     fn codegen<'a>(&'a self, &mut Module, &mut IRBuilder, &mut SymbolTable) -> RValue<'a>;
@@ -72,8 +72,17 @@ pub struct Call {
 impl Expr for Call {}
 
 impl Ast for Call {
-    fn codegen(&self, _: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> RValue {
-        unimplemented!()
+    fn codegen(&self, m: &mut Module, ir: &mut IRBuilder, st: &mut SymbolTable) -> RValue {
+        let f = m.get_function(&self.callee).ok_or(CodeGenError {
+            comment: format!("Unknown function: {}", self.callee),
+            trace: vec![self],
+        })?;
+        // TODO: #args check
+        let args = self.args
+            .iter()
+            .map(|a| a.codegen(m, ir, st).map_err(|e| e.pushed(self)))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ir.build_call(f, &args, "calltmp"))
     }
 }
 
@@ -99,10 +108,10 @@ impl Ast for Binary {
         let lhs = self.lhs.codegen(m, ir, st).map_err(|e| e.pushed(self))?;
         let rhs = self.rhs.codegen(m, ir, st).map_err(|e| e.pushed(self))?;
         match self.op {
-            Op::Add => Ok(ir.create_fadd(lhs, rhs, "addtmp")),
-            Op::Sub => Ok(ir.create_fsub(lhs, rhs, "subtmp")),
-            Op::Mul => Ok(ir.create_fmul(lhs, rhs, "multmp")),
-            Op::Div => Ok(ir.create_fdiv(lhs, rhs, "divtmp")),
+            Op::Add => Ok(ir.build_fadd(lhs, rhs, "addtmp")),
+            Op::Sub => Ok(ir.build_fsub(lhs, rhs, "subtmp")),
+            Op::Mul => Ok(ir.build_fmul(lhs, rhs, "multmp")),
+            Op::Div => Ok(ir.build_fdiv(lhs, rhs, "divtmp")),
         }
     }
 }
