@@ -122,6 +122,14 @@ pub struct Proto {
     args: Vec<String>,
 }
 
+impl Ast for Proto {
+    fn codegen(&self, m: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> RValue {
+        let args = vec![f64_type(); self.args.len()];
+        let f = fn_type(f64_type(), &args);
+        Ok(m.create_function(&self.name, f))
+    }
+}
+
 #[derive(Debug, new)]
 pub struct Func {
     proto: Proto,

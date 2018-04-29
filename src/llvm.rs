@@ -13,6 +13,8 @@ pub type ValueRef = LLVMValueRef;
 pub type FunctionRef = LLVMValueRef;
 pub type SymbolTable = HashMap<String, ValueRef>;
 
+pub type TypeRef = LLVMTypeRef;
+
 impl Context {
     pub fn new() -> Self {
         Context(unsafe { LLVMContextCreate() })
@@ -64,8 +66,22 @@ impl Module {
             Some(ptr)
         }
     }
+
+    pub fn create_function(&mut self, name: &str, ty: TypeRef) -> FunctionRef {
+        let name = CString::new(name).expect("Cannot cast to CString");
+        unsafe { LLVMAddFunction(self.0, name.as_ptr(), ty) }
+    }
 }
 
 pub fn const_f64(value: f64) -> ValueRef {
     unsafe { LLVMConstReal(LLVMDoubleType(), value) }
+}
+
+pub fn fn_type(ret: TypeRef, params: &[TypeRef]) -> TypeRef {
+    const FALSE: LLVMBool = 0;
+    unsafe { LLVMFunctionType(ret, params.as_ptr() as *mut _, params.len() as u32, FALSE) }
+}
+
+pub fn f64_type() -> TypeRef {
+    unsafe { LLVMDoubleType() }
 }
