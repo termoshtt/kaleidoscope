@@ -23,10 +23,10 @@ impl<'a> CodeGenError<'a> {
     }
 }
 
-pub type RValue<'a> = Result<LLVMValueRef, CodeGenError<'a>>;
+pub type RValue<'a> = Result<Value, CodeGenError<'a>>;
 
 pub trait Ast: Debug {
-    fn codegen<'a>(&'a self, &mut Context) -> RValue<'a>;
+    fn codegen<'a>(&'a self, &mut Module, &mut IRBuilder, &mut SymbolTable) -> RValue<'a>;
 }
 
 pub trait Expr: Ast {}
@@ -39,8 +39,8 @@ pub struct Variable {
 impl Expr for Variable {}
 
 impl Ast for Variable {
-    fn codegen(&self, context: &mut Context) -> RValue {
-        match context.symble_table.get(&self.name) {
+    fn codegen(&self, _: &mut Module, _: &mut IRBuilder, table: &mut SymbolTable) -> RValue {
+        match table.get(&self.name) {
             Some(&value) => Ok(value),
             None => Err(CodeGenError {
                 comment: format!("Undefined variable: {}", self.name),
@@ -58,8 +58,8 @@ pub struct Number {
 impl Expr for Number {}
 
 impl Ast for Number {
-    fn codegen(&self, _: &mut Context) -> RValue {
-        Ok(unsafe { LLVMConstReal(LLVMDoubleType(), self.value) })
+    fn codegen(&self, _: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> RValue {
+        Ok(const_f64(self.value))
     }
 }
 
@@ -72,7 +72,7 @@ pub struct Call {
 impl Expr for Call {}
 
 impl Ast for Call {
-    fn codegen(&self, _: &mut Context) -> RValue {
+    fn codegen(&self, _: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> RValue {
         unimplemented!()
     }
 }
@@ -95,14 +95,14 @@ pub struct Binary {
 impl Expr for Binary {}
 
 impl Ast for Binary {
-    fn codegen(&self, c: &mut Context) -> RValue {
-        let lhs = self.lhs.codegen(c).map_err(|e| e.pushed(self))?;
-        let rhs = self.rhs.codegen(c).map_err(|e| e.pushed(self))?;
+    fn codegen(&self, m: &mut Module, ir: &mut IRBuilder, st: &mut SymbolTable) -> RValue {
+        let lhs = self.lhs.codegen(m, ir, st).map_err(|e| e.pushed(self))?;
+        let rhs = self.rhs.codegen(m, ir, st).map_err(|e| e.pushed(self))?;
         match self.op {
-            Op::Add => Ok(c.create_fadd(lhs, rhs, "addtmp")),
-            Op::Sub => Ok(c.create_fsub(lhs, rhs, "subtmp")),
-            Op::Mul => Ok(c.create_fmul(lhs, rhs, "multmp")),
-            Op::Div => Ok(c.create_fdiv(lhs, rhs, "divtmp")),
+            Op::Add => Ok(ir.create_fadd(lhs, rhs, "addtmp")),
+            Op::Sub => Ok(ir.create_fsub(lhs, rhs, "subtmp")),
+            Op::Mul => Ok(ir.create_fmul(lhs, rhs, "multmp")),
+            Op::Div => Ok(ir.create_fdiv(lhs, rhs, "divtmp")),
         }
     }
 }
