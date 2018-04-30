@@ -4,13 +4,13 @@ use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 use std::collections::HashMap;
 use std::ffi::CString;
+use std::ptr::null_mut;
 
 pub struct Context(LLVMContextRef);
 pub struct IRBuilder(LLVMBuilderRef);
 pub struct Module(LLVMModuleRef);
 
 pub type ValueRef = LLVMValueRef;
-pub type FunctionRef = LLVMValueRef;
 pub type SymbolTable = HashMap<String, ValueRef>;
 
 pub type TypeRef = LLVMTypeRef;
@@ -47,12 +47,16 @@ impl IRBuilder {
         unsafe {
             LLVMBuildCall(
                 self.0,
-                func,
+                func.0,
                 args.as_ptr() as *mut _, // XXX: Is this real safe?
                 args.len() as u32,
                 name.as_ptr(),
             )
         }
+    }
+
+    pub fn set_position(&mut self, bb: &BasicBlock) {
+        unsafe { LLVMPositionBuilderAtEnd(self.0, bb.0) };
     }
 }
 
@@ -63,13 +67,36 @@ impl Module {
         if ptr.is_null() {
             None
         } else {
-            Some(ptr)
+            Some(FunctionRef(ptr))
         }
     }
 
     pub fn create_function(&mut self, name: &str, ty: TypeRef) -> FunctionRef {
         let name = CString::new(name).expect("Cannot cast to CString");
-        unsafe { LLVMAddFunction(self.0, name.as_ptr(), ty) }
+        FunctionRef(unsafe { LLVMAddFunction(self.0, name.as_ptr(), ty) })
+    }
+}
+
+pub struct BasicBlock(LLVMBasicBlockRef);
+
+impl BasicBlock {
+    pub fn new(func: FunctionRef, name: &str) -> Self {
+        let name = CString::new(name).expect("Cannot cast to CString");
+        BasicBlock(unsafe { LLVMAppendBasicBlock(func.0, name.as_ptr() as *mut _) })
+    }
+}
+
+pub struct FunctionRef(LLVMValueRef);
+impl FunctionRef {
+    pub fn num_args(&self) -> usize {
+        unsafe { LLVMCountParams(self.0) as usize }
+    }
+
+    pub fn get_args(&self) -> Vec<ValueRef> {
+        let n = self.num_args();
+        let mut p = vec![null_mut(); n];
+        unsafe { LLVMGetParams(self.0, p.as_mut_ptr()) };
+        p
     }
 }
 
