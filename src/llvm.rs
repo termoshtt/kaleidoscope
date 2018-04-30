@@ -3,7 +3,7 @@
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 use std::collections::HashMap;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::ptr::null_mut;
 
 pub struct Context(LLVMContextRef);
@@ -54,6 +54,10 @@ impl IRBuilder {
         })
     }
 
+    pub fn build_return(&mut self, ret: ValueRef) -> ValueRef {
+        ValueRef(unsafe { LLVMBuildRet(self.0, ret.0) })
+    }
+
     pub fn set_position(&mut self, bb: &BasicBlock) {
         unsafe { LLVMPositionBuilderAtEnd(self.0, bb.0) };
     }
@@ -99,12 +103,31 @@ impl FunctionRef {
         unsafe { LLVMGetParams(self.0, p.as_mut_ptr()) };
         p.into_iter().map(|p| ValueRef(p)).collect()
     }
+
+    pub fn verify(&self) -> Option<()> {
+        use llvm_sys::analysis::*;
+        let s = unsafe {
+            LLVMVerifyFunction(self.0, LLVMVerifierFailureAction::LLVMPrintMessageAction)
+        };
+        if s == 0 {
+            Some(())
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct ValueRef(LLVMValueRef);
 
 impl ValueRef {
+    pub fn get_name(&self) -> String {
+        unsafe { CStr::from_ptr(LLVMGetValueName(self.0)) }
+            .to_str()
+            .expect("Non utf8 name")
+            .into()
+    }
+
     pub fn set_name(&mut self, name: &str) {
         let name = CString::new(name).expect("Cannot cast to CString");
         unsafe { LLVMSetValueName(self.0, name.as_ptr()) };

@@ -3,6 +3,7 @@
 use llvm::*;
 use std::fmt::Debug;
 
+#[derive(Debug)]
 pub struct CodeGenError<'a> {
     comment: String,
     trace: Vec<&'a Ast>,
@@ -12,6 +13,13 @@ pub struct CodeGenError<'a> {
 pub trait Ast: Debug {}
 
 impl<'a> CodeGenError<'a> {
+    fn new(comment: &str, ast: &'a Ast) -> Self {
+        CodeGenError {
+            comment: comment.into(),
+            trace: vec![ast],
+        }
+    }
+
     fn pushed<'b, 'c>(self, ast: &'b Ast) -> CodeGenError<'c>
     where
         'a: 'c,
@@ -144,9 +152,13 @@ impl Proto {
         _: &mut SymbolTable,
     ) -> Result<FunctionRef> {
         let args = vec![f64_type(); self.args.len()];
-        let f = fn_type(f64_type(), &args);
-        // TODO: set name of args
-        Ok(m.create_function(&self.name, f))
+        let f_ty = fn_type(f64_type(), &args);
+        let f = m.create_function(&self.name, f_ty);
+        f.get_args()
+            .iter_mut()
+            .zip(self.args.iter())
+            .for_each(|(a, name)| a.set_name(name));
+        Ok(f)
     }
 }
 
@@ -164,12 +176,21 @@ impl Func {
         ir: &mut IRBuilder,
         st: &mut SymbolTable,
     ) -> Result<FunctionRef> {
-        let proto = match m.get_function(&self.proto.name) {
+        let f = match m.get_function(&self.proto.name) {
             Some(f) => f,
             None => self.proto.codegen(m, ir, st).map_err(|e| e.pushed(self))?,
         };
-        let bb = BasicBlock::new(proto, "entry");
+        let bb = BasicBlock::new(f, "entry");
         ir.set_position(&bb);
+        st.clear();
+        for arg in f.get_args() {
+            st.insert(arg.get_name(), arg);
+        }
+        let body = self.body.codegen(m, ir, st)?;
+        ir.build_return(body);
+        f.verify()
+            .ok_or(CodeGenError::new("Function verification failed", self))?;
+        Ok(f)
     }
 }
 
