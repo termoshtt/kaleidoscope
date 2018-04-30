@@ -8,6 +8,9 @@ pub struct CodeGenError<'a> {
     trace: Vec<&'a Ast>,
 }
 
+/// Marker trait for code generator
+pub trait Ast: Debug {}
+
 impl<'a> CodeGenError<'a> {
     fn pushed<'b, 'c>(self, ast: &'b Ast) -> CodeGenError<'c>
     where
@@ -25,21 +28,18 @@ impl<'a> CodeGenError<'a> {
 
 pub type Result<'a, T> = ::std::result::Result<T, CodeGenError<'a>>;
 
-pub trait Ast: Debug {
+pub trait Expr: Ast {
     fn codegen<'a>(&'a self, &mut Module, &mut IRBuilder, &mut SymbolTable)
         -> Result<'a, ValueRef>;
 }
-
-pub trait Expr: Ast {}
 
 #[derive(Debug, Clone, PartialEq, new)]
 pub struct Variable {
     name: String,
 }
 
-impl Expr for Variable {}
-
-impl Ast for Variable {
+impl Ast for Variable {}
+impl Expr for Variable {
     fn codegen(
         &self,
         _: &mut Module,
@@ -61,9 +61,8 @@ pub struct Number {
     value: f64,
 }
 
-impl Expr for Number {}
-
-impl Ast for Number {
+impl Ast for Number {}
+impl Expr for Number {
     fn codegen(&self, _: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> Result<ValueRef> {
         Ok(const_f64(self.value))
     }
@@ -75,9 +74,8 @@ pub struct Call {
     args: Vec<Box<Expr>>,
 }
 
-impl Expr for Call {}
-
-impl Ast for Call {
+impl Ast for Call {}
+impl Expr for Call {
     fn codegen(
         &self,
         m: &mut Module,
@@ -92,7 +90,7 @@ impl Ast for Call {
         let args = self.args
             .iter()
             .map(|a| a.codegen(m, ir, st).map_err(|e| e.pushed(self)))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
         Ok(ir.build_call(f, &args, "calltmp"))
     }
 }
@@ -112,9 +110,8 @@ pub struct Binary {
     rhs: Box<Expr>,
 }
 
-impl Expr for Binary {}
-
-impl Ast for Binary {
+impl Ast for Binary {}
+impl Expr for Binary {
     fn codegen(
         &self,
         m: &mut Module,
@@ -138,8 +135,14 @@ pub struct Proto {
     args: Vec<String>,
 }
 
-impl Ast for Proto {
-    fn codegen(&self, m: &mut Module, _: &mut IRBuilder, _: &mut SymbolTable) -> Result<ValueRef> {
+impl Ast for Proto {}
+impl Proto {
+    fn codegen(
+        &self,
+        m: &mut Module,
+        _: &mut IRBuilder,
+        _: &mut SymbolTable,
+    ) -> Result<FunctionRef> {
         let args = vec![f64_type(); self.args.len()];
         let f = fn_type(f64_type(), &args);
         // TODO: set name of args
@@ -153,13 +156,14 @@ pub struct Func {
     body: Box<Expr>,
 }
 
-impl Ast for Func {
+impl Ast for Func {}
+impl Func {
     fn codegen(
         &self,
         m: &mut Module,
         ir: &mut IRBuilder,
         st: &mut SymbolTable,
-    ) -> Result<ValueRef> {
+    ) -> Result<FunctionRef> {
         let proto = match m.get_function(&self.proto.name) {
             Some(f) => f,
             None => self.proto.codegen(m, ir, st).map_err(|e| e.pushed(self))?,
