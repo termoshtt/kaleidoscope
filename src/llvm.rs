@@ -10,7 +10,6 @@ pub struct Context(LLVMContextRef);
 pub struct IRBuilder(LLVMBuilderRef);
 pub struct Module(LLVMModuleRef);
 
-pub type ValueRef = LLVMValueRef;
 pub type SymbolTable = HashMap<String, ValueRef>;
 
 pub type TypeRef = LLVMTypeRef;
@@ -28,7 +27,7 @@ impl Context {
 macro_rules! build_binop { ($build:ident, $llvm_func:ident) => {
 pub fn $build(&mut self, lhs: ValueRef, rhs: ValueRef, name: &str) -> ValueRef {
     let name = CString::new(name).expect("Cannot cast to CString");
-    unsafe { $llvm_func(self.0, lhs, rhs, name.as_ptr()) }
+    ValueRef(unsafe { $llvm_func(self.0, lhs.0, rhs.0, name.as_ptr()) })
 }
 }} // build_binop
 
@@ -44,7 +43,7 @@ impl IRBuilder {
 
     pub fn build_call(&mut self, func: FunctionRef, args: &[ValueRef], name: &str) -> ValueRef {
         let name = CString::new(name).expect("Cannot cast to CString");
-        unsafe {
+        ValueRef(unsafe {
             LLVMBuildCall(
                 self.0,
                 func.0,
@@ -52,7 +51,7 @@ impl IRBuilder {
                 args.len() as u32,
                 name.as_ptr(),
             )
-        }
+        })
     }
 
     pub fn set_position(&mut self, bb: &BasicBlock) {
@@ -86,7 +85,9 @@ impl BasicBlock {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct FunctionRef(LLVMValueRef);
+
 impl FunctionRef {
     pub fn num_args(&self) -> usize {
         unsafe { LLVMCountParams(self.0) as usize }
@@ -96,12 +97,22 @@ impl FunctionRef {
         let n = self.num_args();
         let mut p = vec![null_mut(); n];
         unsafe { LLVMGetParams(self.0, p.as_mut_ptr()) };
-        p
+        p.into_iter().map(|p| ValueRef(p)).collect()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ValueRef(LLVMValueRef);
+
+impl ValueRef {
+    pub fn set_name(&mut self, name: &str) {
+        let name = CString::new(name).expect("Cannot cast to CString");
+        unsafe { LLVMSetValueName(self.0, name.as_ptr()) };
     }
 }
 
 pub fn const_f64(value: f64) -> ValueRef {
-    unsafe { LLVMConstReal(LLVMDoubleType(), value) }
+    ValueRef(unsafe { LLVMConstReal(LLVMDoubleType(), value) })
 }
 
 pub fn fn_type(ret: TypeRef, params: &[TypeRef]) -> TypeRef {
