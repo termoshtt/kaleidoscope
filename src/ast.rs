@@ -207,3 +207,15 @@ impl Ast for Func {
 pub struct Extern {
     proto: Proto,
 }
+
+impl Ast for Extern {
+    type Output = FunctionRef;
+    fn codegen(
+        &self,
+        m: &mut Module,
+        ir: &mut IRBuilder,
+        st: &mut SymbolTable,
+    ) -> Result<FunctionRef> {
+        self.proto.codegen(m, ir, st)
+    }
+}
