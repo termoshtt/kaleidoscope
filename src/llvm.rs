@@ -26,8 +26,7 @@ impl Context {
 
 macro_rules! build_binop { ($build:ident, $llvm_func:ident) => {
 pub fn $build(&mut self, lhs: ValueRef, rhs: ValueRef, name: &str) -> ValueRef {
-    let name = CString::new(name).expect("Cannot cast to CString");
-    ValueRef(unsafe { $llvm_func(self.0, lhs.0, rhs.0, name.as_ptr()) })
+    ValueRef(unsafe { $llvm_func(self.0, lhs.0, rhs.0, name.as_cstring().as_ptr()) })
 }
 }} // build_binop
 
@@ -42,14 +41,13 @@ impl IRBuilder {
     build_binop!(build_fdiv, LLVMBuildFDiv);
 
     pub fn build_call(&mut self, func: FunctionRef, args: &[ValueRef], name: &str) -> ValueRef {
-        let name = CString::new(name).expect("Cannot cast to CString");
         ValueRef(unsafe {
             LLVMBuildCall(
                 self.0,
                 func.0,
                 args.as_ptr() as *mut _, // XXX: Is this real safe?
                 args.len() as u32,
-                name.as_ptr(),
+                name.as_cstring().as_ptr(),
             )
         })
     }
@@ -65,8 +63,7 @@ impl IRBuilder {
 
 impl Module {
     pub fn get_function(&mut self, name: &str) -> Option<FunctionRef> {
-        let name = CString::new(name).expect("Cannot cast to CString");
-        let ptr = unsafe { LLVMGetNamedFunction(self.0, name.as_ptr()) };
+        let ptr = unsafe { LLVMGetNamedFunction(self.0, name.as_cstring().as_ptr()) };
         if ptr.is_null() {
             None
         } else {
@@ -75,8 +72,7 @@ impl Module {
     }
 
     pub fn create_function(&mut self, name: &str, ty: TypeRef) -> FunctionRef {
-        let name = CString::new(name).expect("Cannot cast to CString");
-        FunctionRef(unsafe { LLVMAddFunction(self.0, name.as_ptr(), ty) })
+        FunctionRef(unsafe { LLVMAddFunction(self.0, name.as_cstring().as_ptr(), ty) })
     }
 }
 
@@ -84,8 +80,7 @@ pub struct BasicBlock(LLVMBasicBlockRef);
 
 impl BasicBlock {
     pub fn new(func: FunctionRef, name: &str) -> Self {
-        let name = CString::new(name).expect("Cannot cast to CString");
-        BasicBlock(unsafe { LLVMAppendBasicBlock(func.0, name.as_ptr() as *mut _) })
+        BasicBlock(unsafe { LLVMAppendBasicBlock(func.0, name.as_cstring().as_ptr()) })
     }
 }
 
@@ -129,8 +124,7 @@ impl ValueRef {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        let name = CString::new(name).expect("Cannot cast to CString");
-        unsafe { LLVMSetValueName(self.0, name.as_ptr()) };
+        unsafe { LLVMSetValueName(self.0, name.as_cstring().as_ptr()) };
     }
 }
 
@@ -145,4 +139,14 @@ pub fn fn_type(ret: TypeRef, params: &[TypeRef]) -> TypeRef {
 
 pub fn f64_type() -> TypeRef {
     unsafe { LLVMDoubleType() }
+}
+
+trait AsCString {
+    fn as_cstring(self) -> CString;
+}
+
+impl<'a> AsCString for &'a str {
+    fn as_cstring(self) -> CString {
+        CString::new(self).expect("Cannot cast to CString")
+    }
 }
