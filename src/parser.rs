@@ -4,6 +4,20 @@ use combine::*;
 use std::marker::PhantomData;
 use token;
 
+#[derive(Debug)]
+pub enum InputAst {
+    Expr(Box<ast::Expr>),
+    Func(ast::Func),
+    Extern(ast::Extern),
+}
+
+pub fn input<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = InputAst> {
+    extern_()
+        .map(|e| InputAst::Extern(e))
+        .or(func().map(|f| InputAst::Func(f)))
+        .or(expr().map(|e| InputAst::Expr(e)))
+}
+
 fn op<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Op> {
     token('+')
         .or(token('-'))
