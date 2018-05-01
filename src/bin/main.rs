@@ -1,6 +1,8 @@
+extern crate combine;
 extern crate kaleidscope;
 extern crate rustyline;
 
+use combine::Parser;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -15,6 +17,9 @@ fn main() {
             Ok(line) => {
                 rl.add_history_entry(&line);
                 println!("Input = {}", line);
+                let mut p = kaleidscope::parser::input();
+                let (ast, _) = p.parse(line.as_str()).expect("Cannot parse input");
+                println!("AST = {:?}", ast);
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted by user (SIGINT)");
