@@ -22,12 +22,28 @@ fn main() {
         match input {
             Ok(line) => {
                 rl.add_history_entry(&line);
+                if line.len() == 0 {
+                    println!("Empty line, continue. Please exit by Ctrl-D if you want.");
+                    continue;
+                }
                 println!("Input = {}", line);
-                let mut p = kaleidscope::parser::input();
-                let (ast, _) = p.parse(line.as_str()).expect("Cannot parse input");
-                println!("AST = {:?}", ast);
-                ast.codegen(&mut m, &mut ir, &mut st);
-                println!("{}", m.to_string());
+                let mut p = parser::input();
+                if let Ok((ast, _)) = p.parse(line.as_str()) {
+                    println!("AST = {:?}", ast);
+                    if let Err(e) = ast.codegen(&mut m, &mut ir, &mut st) {
+                        println!("Failed to generate LLVM IR");
+                        println!("  Error: {}", e.comment);
+                        println!("  Trace:");
+                        for t in e.trace.iter() {
+                            println!("    {:?}", t);
+                        }
+                        continue;
+                    }
+                    println!("{}", m.to_string());
+                } else {
+                    println!("Failed to parse input. continue.");
+                    continue;
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted by user (SIGINT)");
@@ -38,7 +54,7 @@ fn main() {
                 break;
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Unknown Error: {:?}", err);
                 break;
             }
         }

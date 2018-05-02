@@ -5,8 +5,8 @@ use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct CodeGenError<'a> {
-    comment: String,
-    trace: Vec<&'a Debug>,
+    pub comment: String,
+    pub trace: Vec<&'a Debug>,
 }
 
 pub trait Ast: Debug {
@@ -171,6 +171,12 @@ impl Ast for Proto {
     }
 }
 
+impl Proto {
+    fn annonymus() -> Self {
+        Self::new("__anon_expr".into(), Vec::new())
+    }
+}
+
 #[derive(Debug, new)]
 pub struct Func {
     proto: Proto,
@@ -203,6 +209,12 @@ impl Ast for Func {
     }
 }
 
+impl Func {
+    pub fn top_level_expr(expr: Expr) -> Self {
+        Self::new(Proto::annonymus(), expr)
+    }
+}
+
 #[derive(Debug, new)]
 pub struct Extern {
     proto: Proto,
@@ -217,32 +229,5 @@ impl Ast for Extern {
         st: &mut SymbolTable,
     ) -> Result<FunctionRef> {
         self.proto.codegen(m, ir, st)
-    }
-}
-
-#[derive(Debug)]
-pub enum InputAst {
-    Expr(Expr),
-    Func(Func),
-    Extern(Extern),
-}
-
-impl InputAst {
-    pub fn codegen(&self, m: &mut Module, ir: &mut IRBuilder, st: &mut SymbolTable) {
-        use self::InputAst::*;
-        match self {
-            Expr(ast) => {
-                ast.codegen(m, ir, st)
-                    .expect("Failed to generate code of Expr");
-            }
-            Func(ast) => {
-                ast.codegen(m, ir, st)
-                    .expect("Failed to generate code of Func");
-            }
-            Extern(ast) => {
-                ast.codegen(m, ir, st)
-                    .expect("Failed to generate code of Extern");
-            }
-        }
     }
 }

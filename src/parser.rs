@@ -1,14 +1,17 @@
-use ast;
 use combine::char::spaces;
 use combine::*;
 use std::marker::PhantomData;
+
+use ast;
+use llvm;
 use token;
 
-pub fn input<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::InputAst> {
+pub fn input<I: Stream<Item = char>>(
+) -> impl Parser<Input = I, Output = Box<ast::Ast<Output = llvm::FunctionRef> + 'static>> {
     extern_()
-        .map(|e| ast::InputAst::Extern(e))
-        .or(func().map(|f| ast::InputAst::Func(f)))
-        .or(expr().map(|e| ast::InputAst::Expr(e)))
+        .map(|e| Box::new(e) as _)
+        .or(func().map(|f| Box::new(f) as _))
+        .or(expr().map(|e| Box::new(ast::Func::top_level_expr(e)) as _))
 }
 
 fn op<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Op> {
