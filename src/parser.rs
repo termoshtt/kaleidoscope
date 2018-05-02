@@ -1,21 +1,17 @@
-use ast;
 use combine::char::spaces;
 use combine::*;
 use std::marker::PhantomData;
+
+use ast;
+use llvm;
 use token;
 
-#[derive(Debug)]
-pub enum InputAst {
-    Expr(Box<ast::Expr>),
-    Func(ast::Func),
-    Extern(ast::Extern),
-}
-
-pub fn input<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = InputAst> {
+pub fn input<I: Stream<Item = char>>(
+) -> impl Parser<Input = I, Output = Box<ast::Ast<Output = llvm::FunctionRef> + 'static>> {
     extern_()
-        .map(|e| InputAst::Extern(e))
-        .or(func().map(|f| InputAst::Func(f)))
-        .or(expr().map(|e| InputAst::Expr(e)))
+        .map(|e| Box::new(e) as _)
+        .or(func().map(|f| Box::new(f) as _))
+        .or(expr().map(|e| Box::new(ast::Func::top_level_expr(e)) as _))
 }
 
 fn op<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Op> {
@@ -32,16 +28,15 @@ fn op<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Op> {
         })
 }
 
-fn num<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Box<ast::Expr + 'static>> {
+fn num<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Expr> {
     token::number().map(|t| Box::new(ast::Number::new(t.as_number().unwrap())) as _)
 }
 
-fn var<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Box<ast::Expr + 'static>> {
+fn var<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Expr> {
     token::ident().map(|t| Box::new(ast::Variable::new(t.as_ident().unwrap())) as _)
 }
 
-fn unary_expr<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Box<ast::Expr + 'static>>
-{
+fn unary_expr<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = ast::Expr> {
     paren(try(binary_expr()).or(try(call_expr())).or(num()).or(var()))
         .or(try(call_expr()).or(num()).or(var()))
 }
@@ -49,7 +44,7 @@ fn unary_expr<I: Stream<Item = char>>() -> impl Parser<Input = I, Output = Box<a
 pub struct BinaryExpr<I>(PhantomData<fn(I) -> I>);
 impl<I: Stream<Item = char>> Parser for BinaryExpr<I> {
     type Input = I;
-    type Output = Box<ast::Expr>;
+    type Output = ast::Expr;
     #[inline]
     fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
         let mut p = unary_expr()
@@ -66,7 +61,7 @@ pub fn binary_expr<I: Stream<Item = char>>() -> BinaryExpr<I> {
 pub struct CallExpr<I>(PhantomData<fn(I) -> I>);
 impl<I: Stream<Item = char>> Parser for CallExpr<I> {
     type Input = I;
-    type Output = Box<ast::Expr>;
+    type Output = ast::Expr;
     #[inline]
     fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
         let mut p = token::ident()
@@ -82,7 +77,7 @@ pub fn call_expr<I: Stream<Item = char>>() -> CallExpr<I> {
 pub struct Expr<I>(PhantomData<fn(I) -> I>);
 impl<I: Stream<Item = char>> Parser for Expr<I> {
     type Input = I;
-    type Output = Box<ast::Expr>;
+    type Output = ast::Expr;
     #[inline]
     fn parse_stream(&mut self, input: I) -> ParseResult<Self::Output, Self::Input> {
         let mut p = spanned(try(binary_expr()).or(unary_expr()));
