@@ -9,7 +9,7 @@ Progress
 
 - [x] 1. Tutorial Introduction and the Lexer
 - [x] 2. Implementing a Parser and AST
-- [ ] 3. Code generation to LLVM IR
+- [x] 3. Code generation to LLVM IR
 - [ ] 4. Adding JIT and Optimizer Support
 - [ ] 5. Extending the Language: Control Flow
 - [ ] 6. Extending the Language: User-defined Operators
