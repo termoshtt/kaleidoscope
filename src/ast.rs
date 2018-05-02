@@ -219,3 +219,30 @@ impl Ast for Extern {
         self.proto.codegen(m, ir, st)
     }
 }
+
+#[derive(Debug)]
+pub enum InputAst {
+    Expr(Expr),
+    Func(Func),
+    Extern(Extern),
+}
+
+impl InputAst {
+    pub fn codegen(&self, m: &mut Module, ir: &mut IRBuilder, st: &mut SymbolTable) {
+        use self::InputAst::*;
+        match self {
+            Expr(ast) => {
+                ast.codegen(m, ir, st)
+                    .expect("Failed to generate code of Expr");
+            }
+            Func(ast) => {
+                ast.codegen(m, ir, st)
+                    .expect("Failed to generate code of Func");
+            }
+            Extern(ast) => {
+                ast.codegen(m, ir, st)
+                    .expect("Failed to generate code of Extern");
+            }
+        }
+    }
+}

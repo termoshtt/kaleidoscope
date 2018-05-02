@@ -62,6 +62,10 @@ impl IRBuilder {
 }
 
 impl Module {
+    pub fn new(name: &str) -> Self {
+        Module(unsafe { LLVMModuleCreateWithName(name.as_cstring().as_ptr()) })
+    }
+
     pub fn get_function(&mut self, name: &str) -> Option<FunctionRef> {
         let ptr = unsafe { LLVMGetNamedFunction(self.0, name.as_cstring().as_ptr()) };
         if ptr.is_null() {
@@ -73,6 +77,16 @@ impl Module {
 
     pub fn create_function(&mut self, name: &str, ty: TypeRef) -> FunctionRef {
         FunctionRef(unsafe { LLVMAddFunction(self.0, name.as_cstring().as_ptr(), ty) })
+    }
+
+    pub fn to_string(&self) -> String {
+        unsafe {
+            let ptr = LLVMPrintModuleToString(self.0);
+            CStr::from_ptr(ptr)
+                .to_str()
+                .expect("Cannot convert into string")
+                .into()
+        }
     }
 }
 
